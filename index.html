@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compound Interest Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+  }
+
+  input, button, select {
+    margin: 5px 0;
+    padding: 5px;
+  }
+
+  .flex-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .flex-item {
+    flex: 1;
+  }
+
+  #chartContainer {
+    width: 70%;
+    margin: auto;
+  }
+
+  #resultContainer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+
+  .result-box {
+    background-color: #f4f4f4;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 48%;
+  }
+
+  .result-box h3 {
+    background-color: lightcyan;
+    padding: 5px;
+    border-radius: 3px;
+  }
+
+  .result-box p {
+    margin: 5px 0;
+    padding: 3px;
+    border-radius: 3px;
+  }
+
+  .better {
+    background-color: #90EE90;
+  }
+
+  .worse {
+    background-color: #FFCCCB;
+  }
+</style>
+
+</head>
+<body>
+  <h1>Compound Interest Calculator - Compare Two Data Sets</h1>
+  <img src="assets/icon.svg" alt="Icon Description" width="60" height="60">
+
+  <!-- Container for side-by-side forms -->
+  <div class="flex-container">
+    <div class="flex-item">
+      <h2 style="background-color: cyan;">First Dataset</h2>
+      <form id="interestForm1">
+        <label for="principal1">Principal Amount:</label>
+        <input type="number" id="principal1" required><br>
+
+        <label for="rate1">Annual Interest Rate (in %):</label>
+        <input type="number" id="rate1" step="0.01" required><br>
+
+        <label for="years1">Number of Years:</label>
+        <input type="number" id="years1" required><br>
+
+        <label for="contribution1">Contribution Amount:</label>
+        <input type="number" id="contribution1" required><br>
+
+        <label for="contributionFreq1">Contribution Frequency:</label>
+        <select id="contributionFreq1" required>
+          <option value="12">Monthly</option>
+          <option value="52">Weekly</option>
+          <option value="1">Yearly</option>
+        </select><br>
+
+        <label for="brokerFee1">Quarterly Broker Fee:</label>
+        <input type="number" id="brokerFee1" required><br>
+
+        <label for="taxRate1">Tax Rate (on profit):</label>
+        <input type="number" id="taxRate1" step="0.01" required><br>
+      </form>
+    </div>
+
+    <div class="flex-item">
+      <h2 style="background-color: indianred;">Second Dataset</h2>
+      <form id="interestForm2">
+        <label for="principal2">Principal Amount:</label>
+        <input type="number" id="principal2" required><br>
+
+        <label for="rate2">Annual Interest Rate (in %):</label>
+        <input type="number" id="rate2" step="0.01" required><br>
+
+        <label for="years2">Number of Years:</label>
+        <input type="number" id="years2" required><br>
+
+        <label for="contribution2">Contribution Amount:</label>
+        <input type="number" id="contribution2" required><br>
+
+        <label for="contributionFreq2">Contribution Frequency:</label>
+        <select id="contributionFreq2" required>
+          <option value="12">Monthly</option>
+          <option value="52">Weekly</option>
+          <option value="1">Yearly</option>
+        </select><br>
+
+        <label for="brokerFee2">Quarterly Broker Fee:</label>
+        <input type="number" id="brokerFee2" required><br>
+
+        <label for="taxRate2">Tax Rate (on profit):</label>
+        <input type="number" id="taxRate2" step="0.01" required><br>
+      </form>
+    </div>
+  </div>
+
+  <button type="button" onclick="calculateCompoundInterest()">Compare</button>
+
+  <h2>Results</h2>
+  <div id="resultContainer"></div>
+
+  <div id="chartContainer">
+    <canvas id="myChart"></canvas>
+  </div>
+
+  <script>
+    let myChart = null;
+
+    function calculateCompoundInterest() {
+      const principal1 = parseFloat(document.getElementById('principal1').value);
+      const rate1 = parseFloat(document.getElementById('rate1').value) / 100;
+      const years1 = parseInt(document.getElementById('years1').value);
+      const contribution1 = parseFloat(document.getElementById('contribution1').value);
+      const contributionFreq1 = parseInt(document.getElementById('contributionFreq1').value);
+      const brokerFee1 = parseFloat(document.getElementById('brokerFee1').value);
+      const taxRate1 = parseFloat(document.getElementById('taxRate1').value) / 100;
+
+      const principal2 = parseFloat(document.getElementById('principal2').value);
+      const rate2 = parseFloat(document.getElementById('rate2').value) / 100;
+      const years2 = parseInt(document.getElementById('years2').value);
+      const contribution2 = parseFloat(document.getElementById('contribution2').value);
+      const contributionFreq2 = parseInt(document.getElementById('contributionFreq2').value);
+      const brokerFee2 = parseFloat(document.getElementById('brokerFee2').value);
+      const taxRate2 = parseFloat(document.getElementById('taxRate2').value) / 100;
+
+      const result1 = calculateSingleCompoundInterest(principal1, rate1, years1, contribution1, contributionFreq1, brokerFee1, taxRate1);
+      const result2 = calculateSingleCompoundInterest(principal2, rate2, years2, contribution2, contributionFreq2, brokerFee2, taxRate2);
+
+      renderChart(result1.labels, result1.data, result2.data);
+      displayResults(result1, result2);
+    }
+
+    function calculateSingleCompoundInterest(principal, rate, years, contribution, contributionFreq, brokerFee, taxRate) {
+      let results = [];
+      let labels = [];
+      let totalAmount = principal;
+      let totalContributed = 0;
+      let totalFeesPaid = 0;
+
+      for (let year = 0; year <= years; year++) {
+        let yearContributions = 0;
+        for (let i = 0; i < contributionFreq; i++) {
+          totalAmount += contribution;
+          yearContributions += contribution;
+          totalAmount = totalAmount * (1 + (rate / contributionFreq));
+        }
+        totalContributed += yearContributions;
+        for (let i = 0; i < 4; i++) {
+          totalAmount -= brokerFee;
+          totalFeesPaid += brokerFee;
+        }
+
+        results.push(totalAmount.toFixed(2));
+        labels.push(`Year ${year}`);
+      }
+
+      const finalProfit = totalAmount - principal - totalContributed;
+      const tax = finalProfit > 0 ? finalProfit * taxRate : 0;
+      const totalAfterTax = totalAmount - tax;
+
+      return {
+        labels: labels,
+        data: results,
+        totalAmount: totalAmount,
+        totalContributed: totalContributed,
+        finalProfit: finalProfit,
+        totalFeesPaid: totalFeesPaid,
+        tax: tax,
+        totalAfterTax: totalAfterTax
+      };
+    }
+
+    function displayResults(result1, result2) {
+      const resultContainer = document.getElementById('resultContainer');
+
+      const compareResults = (value1, value2) => {
+        if (value1 > value2) return ['better', 'worse'];
+        if (value1 < value2) return ['worse', 'better'];
+        return ['', ''];
+      };
+
+      const [totalAmountClass1, totalAmountClass2] = compareResults(result1.totalAmount, result2.totalAmount);
+      const [totalContributedClass1, totalContributedClass2] = compareResults(result2.totalContributed, result1.totalContributed);
+      const [finalProfitClass1, finalProfitClass2] = compareResults(result1.finalProfit, result2.finalProfit);
+      const [totalFeesPaidClass1, totalFeesPaidClass2] = compareResults(result2.totalFeesPaid, result1.totalFeesPaid);
+      const [taxClass1, taxClass2] = compareResults(result2.tax, result1.tax);
+      const [totalAfterTaxClass1, totalAfterTaxClass2] = compareResults(result1.totalAfterTax, result2.totalAfterTax);
+
+      const resultHTML1 = `
+        <div class="result-box">
+          <h3>First Dataset Results</h3>
+          <p class="${totalAmountClass1}">Total Amount: $${result1.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${totalContributedClass1}">Total Contributions: $${result1.totalContributed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${finalProfitClass1}">Final Profit: $${result1.finalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${totalFeesPaidClass1}">Total Fees Paid: $${result1.totalFeesPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${taxClass1}">Taxes Paid: $${result1.tax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${totalAfterTaxClass1}">Final Amount Recieved: $${result1.totalAfterTax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+        </div>
+      `;
+
+      const resultHTML2 = `
+        <div class="result-box">
+          <h3>Second Dataset Results</h3>
+          <p class="${totalAmountClass2}">Total Amount: $${result2.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${totalContributedClass2}">Total Contributions: $${result2.totalContributed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${finalProfitClass2}">Final Profit: $${result2.finalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${totalFeesPaidClass2}">Total Fees Paid: $${result2.totalFeesPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${taxClass2}">Taxes Paid: $${result2.tax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+          <p class="${totalAfterTaxClass2}">Final Amount Recieved: $${result2.totalAfterTax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+        </div>
+      `;
+
+      resultContainer.innerHTML = resultHTML1 + resultHTML2;
+    }
+
+    function renderChart(labels, dataset1, dataset2) {
+      const ctx = document.getElementById('myChart').getContext('2d');
+
+      if (myChart !== null) {
+        myChart.destroy();
+      }
+
+      myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Dataset 1',
+              data: dataset1,
+              fill: false,
+              borderColor: 'blue',
+              tension: 0.1
+            },
+            {
+              label: 'Dataset 2',
+              data: dataset2,
+              fill: false,
+              borderColor: 'red',
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value, index, values) {
+                  return '$' + value.toLocaleString();
+                }
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.parsed.y !== null) {
+                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                  }
+                  return label;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
